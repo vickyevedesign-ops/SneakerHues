@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sneaker Customizer – Watermelon Challenge</title>
+  <style>
+    /* ====== TYPE & TOKENS ====== */
+    @font-face {
+      font-family: "AccessMN";
+      src: url("./assets/fonts/Access MN Medium.ttf") format("truetype"); /* keep the space as-is or rename file */
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+    :root{
+      --bg:#0c0c0c;          /* tune these to match XD exactly */
+      --panel:#111216;
+      --ink:#f5f5f5;
+      --muted:#a3a3a3;
+      --accent:#35BA89;      /* watermelon green */
+      --accent-2:#FF5B78;    /* watermelon pink */
+      --off:#F9F7EF;         /* off-white */
+      --gray:#E7E7E7;        /* light gray */
+      --radius:24px;
+      --gap:14px;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --pad:20px;
+      --maxw:1080px;
+      --h1:56px; /* adjust to match XD */
+      --h2:18px; /* adjust to match XD */
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--ink);
+      font-family: AccessMN, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      display:flex; align-items:flex-start; justify-content:center;
+    }
+    .wrap{width:100%; max-width:var(--maxw); padding:40px 24px;}
+
+    /* ====== HEADER ====== */
+    .header{display:flex; align-items:center; justify-content:space-between; margin-bottom:28px}
+    .brand{display:flex; align-items:center; gap:12px}
+    .dot{width:14px; height:14px; border-radius:50%; background:var(--accent)}
+    .title{font-size:var(--h1); line-height:1; letter-spacing:.5px}
+
+    /* ====== LAYOUT ====== */
+    .grid{display:grid; grid-template-columns: 380px 1fr; gap:28px}
+    @media (max-width: 980px){
+      .grid{grid-template-columns: 1fr;}
+    }
+
+    .panel{background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow)}
+    .left{padding:var(--pad)}
+
+    .right{display:flex; align-items:center; justify-content:center; position:relative;}
+    .canvas{padding:var(--pad);}
+
+    /* lock untouchable groups */
+    #detail, #background{ pointer-events:none; }
+
+    /* Fillable interaction */
+    #fillable [class]{ cursor: pointer; transition: fill .15s ease, filter .15s ease; }
+    #fillable [class]:hover{ filter: brightness(1.08); }
+    .selected-part{ outline: 2px dashed var(--accent); outline-offset:2px; }
+
+    /* ====== SCORE / MODE BAR ====== */
+    .modebar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px}
+    .score{font-size:28px}
+    .score small{color:var(--muted); font-size:16px}
+
+    .modes{display:flex; gap:10px}
+    .btn{
+      appearance:none; border:1px solid #222; color:var(--ink); background:#16181d;
+      padding:12px 16px; border-radius:14px; cursor:pointer; font: inherit;
+    }
+    .btn[aria-pressed="true"]{ background:var(--accent); color:#00150c; border-color:transparent; }
+    .btn.secondary{ background:#151515; }
+
+    /* ====== PALETTE ====== */
+    .palette{ display:flex; flex-wrap:wrap; gap:10px; margin:14px 0 6px }
+    .swatch{ width:36px; height:36px; border-radius:50%; border:2px solid #000; cursor:pointer; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15)}
+    .swatch[aria-selected="true"]{ outline:3px solid var(--ink); outline-offset:2px }
+
+    .legend{ display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:8px; margin-top:10px }
+    .legend-row{ display:flex; align-items:center; gap:10px; font-size:14px; color:var(--muted)}
+    .legend-row .dot{ width:12px; height:12px; border-radius:4px }
+
+    /* ====== STATES ====== */
+    .status{ position:absolute; top:10px; right:10px; background:#121316; border:1px solid #202127; padding:8px 12px; border-radius:10px; font-size:13px; color:var(--muted)}
+    .complete-banner{ position:absolute; inset:auto 18px 18px auto; background:var(--accent); color:#00150c; padding:12px 16px; border-radius:12px; font-weight:700; display:none }
+    .complete .complete-banner{ display:block }
+
+    /* ====== FOOTER ====== */
+    .footer{ margin-top:24px; color:var(--muted); font-size:14px }
+
+    /* ====== SVG sizing ====== */
+    svg{ max-width:100%; height:auto; display:block }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="brand"><span class="dot"></span><div class="title" id="pageTitle">WATERMELON</div></div>
+      <div class="status" id="stateText">Landing</div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT PANEL: Controls -->
+      <aside class="panel left">
+        <div class="modebar">
+          <div class="score" id="score">0<span id="scoreSep">/</span><span id="total">0</span> <small>correct</small></div>
+          <div class="modes">
+            <button class="btn" id="modeGame" aria-pressed="true">Gameplay</button>
+            <button class="btn secondary" id="modeFree">Free play</button>
+          </div>
+        </div>
+
+        <div id="challengeMeta" style="margin-bottom:12px; color:var(--muted); font-size:14px">
+          Match the Watermelon colorway by painting each labeled part.
+        </div>
+
+        <div>
+          <div style="margin-bottom:8px; font-size:var(--h2); color:var(--muted)">Palette</div>
+          <div class="palette" id="palette"></div>
+          <div class="legend" id="legend"></div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:16px">
+          <button class="btn" id="resetBtn">Reset</button>
+          <button class="btn secondary" id="revealBtn">Reveal</button>
+          <button class="btn secondary" id="downloadBtn">Download PNG</button>
+        </div>
+      </aside>
+
+      <!-- RIGHT: Sneaker canvas -->
+      <main class="panel right" id="stage">
+        <div class="complete-banner" id="completeBanner">Completed ✓</div>
+        <div class="canvas" id="sneaker-container">
+          <!-- ⬇️ Paste the contents of airmax1.svg below. Ensure its layer groups are id="background", id="detail", id="fillable". -->
+          <!-- Example placeholder if SVG not yet pasted: -->
+          <svg id="placeholder" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#0f1115" rx="24"/>
+            <text x="50%" y="50%" text-anchor="middle" fill="#666" font-size="18" font-family="AccessMN">Paste airmax1.svg here</text>
+          </svg>
+        </div>
+      </main>
+    </div>
+
+    <div class="footer">Tip: Only the <strong>fillable</strong> layer is interactive; background & detail are locked.</div>
+  </div>
+
+  <script>
+    /* ========================
+     *  DATA CONFIG
+     * ======================== */
+    const PARTS = [
+      "logo","eyestay","airbag","midsole","tongue","laces","lining",
+      "tonguelining","outsole","toungelabel","undermiddle","lacecover",
+      "layer","toebox","top","swoosh","back","middle","mudguard"
+    ];
+
+    // Watermelon challenge target colors (hex). Only parts with a hex are scored.
+    const CHALLENGES = [
+      {
+        id: "watermelon",
+        title: "WATERMELON",
+        palette: ["#35BA89", "#F9F7EF", "#E7E7E7", "#FF5B78", "#000000", "#FFFFFF"],
+        targets: {
+          logo: "#35BA89",
+          eyestay: "#35BA89",
+          airbag: "#35BA89",
+          midsole: "#F9F7EF",
+          tongue: "#F9F7EF",
+          laces: "#F9F7EF",
+          lining: "#E7E7E7",
+          // tonguelining: undefined,
+          outsole: "#35BA89",
+          // toungelabel: undefined,
+          // undermiddle: undefined,
+          // lacecover: undefined,
+          layer: "#E7E7E7",
+          toebox: "#F9F7EF",
+          top: "#F9F7EF",
+          swoosh: "#FF5B78",
+          back: "#E7E7E7",
+          middle: "#E7E7E7",
+          mudguard: "#35BA89"
+        }
+      }
+    ];
+
+    // Switch here in the future to change challenge
+    let currentChallenge = CHALLENGES[0];
+
+    /* ========================
+     *  UTILITIES
+     * ======================== */
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+    function normalizeHex(v){
+      if(!v) return null;
+      // already hex
+      if(/^#?[0-9a-f]{3,8}$/i.test(v)){
+        let s = v.startsWith('#') ? v : `#${v}`;
+        // expand #abc → #aabbcc
+        if(/^#[0-9a-f]{3}$/i.test(s)){
+          s = '#' + s.slice(1).split('').map(ch => ch+ch).join('');
+        }
+        // only use 6-digit
+        return s.slice(0,7).toUpperCase();
+      }
+      // rgb/rgba → hex
+      const m = v.match(/rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\)/i);
+      if(m){
+        const r = (+m[1]).toString(16).padStart(2,'0');
+        const g = (+m[2]).toString(16).padStart(2,'0');
+        const b = (+m[3]).toString(16).padStart(2,'0');
+        return ('#'+r+g+b).toUpperCase();
+      }
+      return v.toUpperCase();
+    }
+
+    function partNameFromEl(el){
+      if(!el || !el.classList) return null;
+      // find first class that is a known PART
+      for(const cls of el.classList){
+        if(PARTS.includes(cls)) return cls;
+      }
+      return null;
+    }
+
+    function getFill(el){
+      // inline fill attribute wins; fall back to computed style
+      const f = el.getAttribute('fill');
+      if(f && f !== 'none') return f;
+      const cs = getComputedStyle(el);
+      // Some SVGs inherit fill, capture it for comparison
+      return cs.fill;
+    }
+
+    function setFill(el, hex){
+      el.setAttribute('fill', hex);
+    }
+
+    function scoreNow(){
+      const targets = currentChallenge.targets;
+      const entries = Object.entries(targets).filter(([k,v]) => !!v);
+      let correct = 0;
+      for(const [part, targetHex] of entries){
+        const els = $$(`#fillable .${part}`, svgRoot);
+        if(!els.length) continue; // skip if missing in this SVG
+        // A part is considered correct if ALL its elements match the target
+        const allMatch = els.every(el => normalizeHex(getFill(el)) === normalizeHex(targetHex));
+        if(allMatch) correct++;
+      }
+      $('#score').firstChild.nodeValue = correct; // update the X in X/Y
+      $('#total').textContent = entries.length;
+
+      const stage = $('#stage');
+      if(correct === entries.length && entries.length>0){
+        stage.classList.add('complete');
+        $('#stateText').textContent = 'Landing completed';
+      }else{
+        stage.classList.remove('complete');
+        $('#stateText').textContent = (isGameMode ? 'Landing' : 'Free play');
+      }
+    }
+
+    function buildPalette(colors){
+      const pal = $('#palette'); pal.innerHTML = '';
+      colors.forEach((hex, idx) => {
+        const b = document.createElement('button');
+        b.className = 'swatch';
+        b.style.background = hex;
+        b.setAttribute('aria-label', hex);
+        b.dataset.color = normalizeHex(hex);
+        if(idx===0) b.setAttribute('aria-selected','true');
+        b.addEventListener('click', () => {
+          $$('.swatch').forEach(s => s.removeAttribute('aria-selected'));
+          b.setAttribute('aria-selected','true');
+          selectedColor = b.dataset.color;
+        });
+        pal.appendChild(b);
+      });
+      selectedColor = normalizeHex(colors[0]);
+    }
+
+    function buildLegend(targets){
+      const legend = $('#legend'); legend.innerHTML = '';
+      Object.entries(targets).forEach(([part, hex]) => {
+        const row = document.createElement('div');
+        row.className = 'legend-row';
+        const sw = document.createElement('div'); sw.className = 'dot';
+        sw.style.background = hex || 'transparent';
+        sw.style.border = hex ? '0' : '1px dashed #444';
+        const label = document.createElement('div');
+        label.textContent = part + (hex? '' : ' (free)');
+        legend.appendChild(Object.assign(row, {appendChild: (c)=>{}}));
+        row.appendChild(sw); row.appendChild(label);
+        legend.appendChild(row);
+      });
+    }
+
+    function attachInteractivity(){
+      // Only fillable children are interactive
+      const fillables = $$(`#fillable [class]`, svgRoot).filter(el => partNameFromEl(el));
+      fillables.forEach(el => {
+        el.addEventListener('click', () => {
+          // Apply selected color
+          setFill(el, selectedColor);
+          if(isGameMode) scoreNow();
+        });
+      });
+    }
+
+    function resetAll(){
+      const els = $$(`#fillable [class]`, svgRoot);
+      els.forEach(el => el.removeAttribute('fill'));
+      scoreNow();
+    }
+
+    function revealAll(){
+      const targets = currentChallenge.targets;
+      for(const [part, hex] of Object.entries(targets)){
+        if(!hex) continue; // skip undefined
+        const els = $$(`#fillable .${part}`, svgRoot);
+        els.forEach(el => setFill(el, hex));
+      }
+      scoreNow();
+    }
+
+    // Export PNG from inline SVG
+    async function downloadPNG(){
+      const svg = $('#sneaker-container svg');
+      if(!svg) return;
+      const clone = svg.cloneNode(true);
+      const css = new XMLSerializer().serializeToString(clone);
+      const svgBlob = new Blob([css], {type: 'image/svg+xml;charset=utf-8'});
+      const url = URL.createObjectURL(svgBlob);
+
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function(){
+        const canvas = document.createElement('canvas');
+        const vb = svg.viewBox.baseVal || {x:0,y:0,width:svg.clientWidth,height:svg.clientHeight};
+        canvas.width = vb.width; canvas.height = vb.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        canvas.toBlob((blob) => {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `${currentChallenge.id}.png`;
+          a.click();
+        }, 'image/png');
+      };
+      img.src = url;
+    }
+
+    /* ========================
+     *  INIT
+     * ======================== */
+    let selectedColor = '#35BA89';
+    let isGameMode = true;
+    let svgRoot = null;
+
+    function boot(){
+      // Find the real SVG root if pasted
+      svgRoot = $('#sneaker-container svg');
+      if(!svgRoot){ console.warn('No SVG found – paste airmax1.svg inside #sneaker-container'); return; }
+
+      // Ensure group ids exist and lock non-fillable layers (extra safety)
+      const bg = svgRoot.querySelector('#background'); if(bg) bg.style.pointerEvents='none';
+      const dt = svgRoot.querySelector('#detail'); if(dt) dt.style.pointerEvents='none';
+
+      buildPalette(currentChallenge.palette);
+      buildLegend(currentChallenge.targets);
+      attachInteractivity();
+      scoreNow();
+
+      // modes
+      $('#modeGame').addEventListener('click', ()=>{
+        isGameMode = true;
+        $('#modeGame').setAttribute('aria-pressed','true');
+        $('#modeFree').setAttribute('aria-pressed','false');
+        $('#stateText').textContent = 'Landing';
+        scoreNow();
+      });
+      $('#modeFree').addEventListener('click', ()=>{
+        isGameMode = false;
+        $('#modeGame').setAttribute('aria-pressed','false');
+        $('#modeFree').setAttribute('aria-pressed','true');
+        $('#stateText').textContent = 'Freeuse';
+      });
+
+      // controls
+      $('#resetBtn').addEventListener('click', resetAll);
+      $('#revealBtn').addEventListener('click', revealAll);
+      $('#downloadBtn').addEventListener('click', downloadPNG);
+
+      // Title
+      $('#pageTitle').textContent = currentChallenge.title;
+    }
+
+    // Wait a tick for inline SVG to be present if injected by templating
+    window.addEventListener('DOMContentLoaded', () => setTimeout(boot, 0));
+  </script>
+</body>
+</html>
